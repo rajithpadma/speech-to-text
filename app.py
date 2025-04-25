@@ -39,8 +39,8 @@ def load_model():
             download_from_github(file)
 
     try:
-        # Load the processor using the preprocessor_config.json file
-        processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH, config="preprocessor_config.json")
+        # Load the processor using preprocessor_config.json file
+        processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH)
 
         # Load the quantized model
         model = Wav2Vec2ForCTC.from_pretrained(MODEL_PATH)
