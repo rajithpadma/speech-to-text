@@ -2,6 +2,7 @@ import os
 import torch
 import streamlit as st
 import librosa
+import requests
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 
 # Optional mic input (commented out to avoid cloud errors)
@@ -17,25 +18,32 @@ SCRIPT_DIR = os.getcwd()
 MODEL_PATH = os.path.join(SCRIPT_DIR, "wav2vec2_tiny_quantized")
 os.makedirs(MODEL_PATH, exist_ok=True)
 
-# Load/download & quantize model
+# Function to download files from GitHub
+def download_from_github(file_name):
+    url = f"https://github.com/your-username/your-repo/raw/main/{file_name}"
+    response = requests.get(url)
+    with open(os.path.join(MODEL_PATH, file_name), "wb") as f:
+        f.write(response.content)
+    return os.path.join(MODEL_PATH, file_name)
+
+# Load/download model and processor
 @st.cache_resource
 def load_model():
-    quantized_path = os.path.join(MODEL_PATH, "quantized_model.pt")
+    # Download necessary files from GitHub if not already present
+    required_files = ["pytorch_model.bin", "config.json", "vocab.json", "tokenizer_config.json"]
 
-    if not os.path.exists(quantized_path):
-        st.info("🔄 Downloading & quantizing model...")
-        processor = Wav2Vec2Processor.from_pretrained("patrickvonplaten/wav2vec2_tiny_random_robust")
-        model = Wav2Vec2ForCTC.from_pretrained("patrickvonplaten/wav2vec2_tiny_random_robust")
-        model.cpu()
-        model_quantized = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
-        torch.save(model_quantized, quantized_path)  # Save the entire model
-        processor.save_pretrained(MODEL_PATH)
-    else:
-        processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH)
-        model_quantized = torch.load(quantized_path)  # Load the entire quantized model
-        model_quantized.eval()
+    for file in required_files:
+        file_path = os.path.join(MODEL_PATH, file)
+        if not os.path.exists(file_path):
+            st.info(f"🔄 Downloading {file} from GitHub...")
+            download_from_github(file)
 
-    return processor, model_quantized
+    # Load the processor and model from the local files
+    processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH)
+    model = Wav2Vec2ForCTC.from_pretrained(MODEL_PATH)
+    model.eval()  # Set the model to evaluation mode
+
+    return processor, model
 
 # Optional: Record audio using mic
 def record_audio(duration=5, filename="recorded.wav"):
