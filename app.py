@@ -30,7 +30,7 @@ def download_from_github(file_name):
 @st.cache_resource
 def load_model():
     # Download necessary files from GitHub if not already present
-    required_files = ["pytorch_model.bin", "config.json", "vocab.json", "tokenizer_config.json"]
+    required_files = ["pytorch_model_quantized.pt", "preprocessor_config.json", "special_tokens_map.json", "tokenizer_config.json", "vocab.json"]
 
     for file in required_files:
         file_path = os.path.join(MODEL_PATH, file)
@@ -39,8 +39,10 @@ def load_model():
             download_from_github(file)
 
     try:
-        # Load the processor and model from the local files
-        processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH)
+        # Load the processor using the preprocessor_config.json file
+        processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH, config="preprocessor_config.json")
+
+        # Load the quantized model
         model = Wav2Vec2ForCTC.from_pretrained(MODEL_PATH)
         model.eval()  # Set the model to evaluation mode
         return processor, model
