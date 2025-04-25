@@ -28,15 +28,14 @@ def load_model():
         model = Wav2Vec2ForCTC.from_pretrained("patrickvonplaten/wav2vec2_tiny_random_robust")
         model.cpu()
         model_quantized = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
-        torch.save(model_quantized.state_dict(), quantized_path)  # Save only model state_dict
+        torch.save(model_quantized, quantized_path)  # Save the entire model
         processor.save_pretrained(MODEL_PATH)
     else:
         processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH)
-        model = Wav2Vec2ForCTC.from_pretrained("patrickvonplaten/wav2vec2_tiny_random_robust")
-        model.load_state_dict(torch.load(quantized_path))
-        model.eval()
+        model_quantized = torch.load(quantized_path)  # Load the entire quantized model
+        model_quantized.eval()
 
-    return processor, model
+    return processor, model_quantized
 
 # Optional: Record audio using mic
 def record_audio(duration=5, filename="recorded.wav"):
