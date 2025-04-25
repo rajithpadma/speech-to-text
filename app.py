@@ -18,9 +18,9 @@ SCRIPT_DIR = os.getcwd()
 MODEL_PATH = os.path.join(SCRIPT_DIR, "wav2vec2_tiny_quantized")
 os.makedirs(MODEL_PATH, exist_ok=True)
 
-# Function to download files from GitHub
+# Function to download files from GitHub if they don't exist
 def download_from_github(file_name):
-    url = f"https://github.com/your-username/your-repo/raw/main/{file_name}"
+    url = f"https://github.com/your-username/your-repo/raw/main/{file_name}"  # Change this URL to your actual GitHub URL
     response = requests.get(url)
     with open(os.path.join(MODEL_PATH, file_name), "wb") as f:
         f.write(response.content)
@@ -29,9 +29,16 @@ def download_from_github(file_name):
 # Load/download model and processor
 @st.cache_resource
 def load_model():
-    # Download necessary files from GitHub if not already present
-    required_files = ["pytorch_model_quantized.pt", "preprocessor_config.json", "special_tokens_map.json", "tokenizer_config.json", "vocab.json"]
+    # List of required files
+    required_files = [
+        "pytorch_model_quantized.pt",
+        "preprocessor_config.json", 
+        "special_tokens_map.json", 
+        "tokenizer_config.json", 
+        "vocab.json"
+    ]
 
+    # Download missing files from GitHub if they are not present
     for file in required_files:
         file_path = os.path.join(MODEL_PATH, file)
         if not os.path.exists(file_path):
