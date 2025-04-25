@@ -38,12 +38,15 @@ def load_model():
             st.info(f"🔄 Downloading {file} from GitHub...")
             download_from_github(file)
 
-    # Load the processor and model from the local files
-    processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH)
-    model = Wav2Vec2ForCTC.from_pretrained(MODEL_PATH)
-    model.eval()  # Set the model to evaluation mode
-
-    return processor, model
+    try:
+        # Load the processor and model from the local files
+        processor = Wav2Vec2Processor.from_pretrained(MODEL_PATH)
+        model = Wav2Vec2ForCTC.from_pretrained(MODEL_PATH)
+        model.eval()  # Set the model to evaluation mode
+        return processor, model
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None, None
 
 # Optional: Record audio using mic
 def record_audio(duration=5, filename="recorded.wav"):
@@ -57,13 +60,17 @@ def record_audio(duration=5, filename="recorded.wav"):
 
 # Transcription function
 def transcribe(file_path, processor, model):
-    audio, _ = librosa.load(file_path, sr=16000)
-    input_values = processor(audio, return_tensors="pt", sampling_rate=16000).input_values
-    with torch.no_grad():
-        logits = model(input_values).logits
-    predicted_ids = torch.argmax(logits, dim=-1)
-    transcription = processor.decode(predicted_ids[0])
-    return transcription
+    try:
+        audio, _ = librosa.load(file_path, sr=16000)
+        input_values = processor(audio, return_tensors="pt", sampling_rate=16000).input_values
+        with torch.no_grad():
+            logits = model(input_values).logits
+        predicted_ids = torch.argmax(logits, dim=-1)
+        transcription = processor.decode(predicted_ids[0])
+        return transcription
+    except Exception as e:
+        st.error(f"Error during transcription: {e}")
+        return ""
 
 # -------------------- Streamlit UI --------------------
 st.set_page_config(page_title="🗣️ Wav2Vec2 Transcriber", layout="centered")
@@ -72,24 +79,27 @@ st.title("🎧 Tiny Wav2Vec2 Transcriber")
 # Load model
 processor, model = load_model()
 
-if MIC_ENABLED:
-    option = st.radio("Choose input method:", ("🎤 Record Audio", "📁 Upload File"))
+if processor is None or model is None:
+    st.error("❌ Failed to load the model. Please check the logs.")
 else:
-    st.warning("⚠️ Microphone input disabled (PortAudio not available). Only upload supported.")
-    option = "📁 Upload File"
+    if MIC_ENABLED:
+        option = st.radio("Choose input method:", ("🎤 Record Audio", "📁 Upload File"))
+    else:
+        st.warning("⚠️ Microphone input disabled (PortAudio not available). Only upload supported.")
+        option = "📁 Upload File"
 
-if option == "🎤 Record Audio":
-    if st.button("⏺️ Record 5s"):
-        file_path = record_audio()
-        transcription = transcribe(file_path, processor, model)
-        st.subheader("📝 Transcription:")
-        st.success(transcription)
+    if option == "🎤 Record Audio":
+        if st.button("⏺️ Record 5s"):
+            file_path = record_audio()
+            transcription = transcribe(file_path, processor, model)
+            st.subheader("📝 Transcription:")
+            st.success(transcription)
 
-elif option == "📁 Upload File":
-    uploaded_file = st.file_uploader("Upload a .wav file", type=["wav"])
-    if uploaded_file is not None:
-        with open("uploaded.wav", "wb") as f:
-            f.write(uploaded_file.read())
-        transcription = transcribe("uploaded.wav", processor, model)
-        st.subheader("📝 Transcription:")
-        st.success(transcription)
+    elif option == "📁 Upload File":
+        uploaded_file = st.file_uploader("Upload a .wav file", type=["wav"])
+        if uploaded_file is not None:
+            with open("uploaded.wav", "wb") as f:
+                f.write(uploaded_file.read())
+            transcription = transcribe("uploaded.wav", processor, model)
+            st.subheader("📝 Transcription:")
+            st.success(transcription)
