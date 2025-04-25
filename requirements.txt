@@ -5,3 +5,4 @@ scipy
 librosa
 streamlit
 numpy
+sounddevice
